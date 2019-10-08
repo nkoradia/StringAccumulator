@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.function.IntPredicate;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class StringAccumulator {
 
@@ -17,52 +18,49 @@ public class StringAccumulator {
         Integer sum = 0;
         List<Integer> intList = null;
         if (null != numbers && !numbers.isEmpty()) {
-            StringBuilder pattern = new StringBuilder();
-            parseDelimiters(numbers, pattern);
-            String delimiter = pattern.length() > 0 ? pattern.toString() : DEFAULT_DELIMITER;
-            int startIndex = pattern.length() > 0 ? 1 : 0; //if 1, mean skip first header line which has the delimiter pattern
             String[] arr = numbers.split("\r?\n");
-            for (int i = startIndex; i < arr.length; i++) {
-                String[] line = arr[i].split(delimiter); //Process each line and sum it
+            if (arr.length > 0) {
+                StringBuilder pattern = new StringBuilder();
+                parseDelimiter(arr[0], pattern);
+                String delimiter = pattern.length() > 0 ? pattern.toString() : DEFAULT_DELIMITER;
+                int startIndex = pattern.length() > 0 ? 1 : 0; //if 1, mean skip first header line which has the delimiter pattern
 
-                intList = Arrays.stream(line)
-                        .filter(s -> s.matches("-?\\d+")) //check for digit
-                        .map(Integer::valueOf)
-                        .collect(Collectors.toList());
+                for (int i = startIndex; i < arr.length; i++) {
+                    String[] line = arr[i].split(delimiter); //Process each line and sum it
 
-                List<Integer> negativeIntegers = intList.stream().filter(negative).collect(Collectors.toList());
+                    intList = Arrays.stream(line)
+                            .filter(s -> s.matches("-?\\d+")) //check for digit
+                            .map(Integer::valueOf)
+                            .collect(Collectors.toList());
 
-                if (!negativeIntegers.isEmpty())
-                    throw new IllegalArgumentException("Negative numbers are not allowed! " + negativeIntegers);
+                    List<Integer> negativeIntegers = intList.stream().filter(negative).collect(Collectors.toList());
 
-                sum += intList.stream().mapToInt(Integer::valueOf).filter(validateRange).sum();
+                    if (!negativeIntegers.isEmpty())
+                        throw new IllegalArgumentException("Negative numbers are not allowed! " + negativeIntegers);
+
+                    sum += intList.stream().mapToInt(Integer::valueOf).filter(validateRange).sum();
+                }
             }
         }
         return sum;
     }
 
-    private void parseDelimiters(final String input, final StringBuilder pattern) {
-        String[] arr = input.split("\r?\n");
-        for (int i = 0; i < arr.length; i++) {
-            if (arr[i].startsWith("//") && arr[i].length() > 2) {
-                String[] delimiters = arr[i].substring(2).split("\\|");
-                if (delimiters.length > 0) pattern.setLength(0);
-                for (int x = 0; x < delimiters.length; x++) {
-                    String d = delimiters[x];
-                    d.chars().forEach(ch -> {
-                        if (SPECIAL_CHARS.chars().anyMatch(sc -> sc == ch)) { // escape special characters
-                            pattern.append("\\");
-                        }
-                        pattern.append(Character.toChars(ch));
-                    });
-
-                    if (x < delimiters.length - 1)
-                        pattern.append("|");
-                }
-
-                break;
-            }
+    private void parseDelimiter(final String input, final StringBuilder pattern) {
+        if (input.startsWith("//") && input.length() > 2) {
+            Stream.of(input.substring(2).split("\\|"))
+                    .forEach(d -> {
+                                d.chars().forEach(ch -> {
+                                    if (SPECIAL_CHARS.chars().anyMatch(sc -> sc == ch)) { // escape special characters
+                                        pattern.append("\\");
+                                    }
+                                    pattern.append(Character.toChars(ch));
+                                });
+                                pattern.append("|");
+                            }
+                    );
+            pattern.deleteCharAt(pattern.length() - 1);
         }
+        System.out.println(pattern);
     }
 
     public static void main(String[] args) throws Exception {
